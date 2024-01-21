@@ -3,6 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val vcpkgRoot = System.getenv("VCPKG_ROOT") ?: throw IllegalStateException("VCPKG_ROOT is not set")
+val androidSDKRootDir = System.getenv("ANDROID_SDK_ROOT") ?: throw IllegalStateException("ANDROID_SDK_ROOT is not set")
+val androidNDKVersion = "25.1.8937393"
+val sourceDir = "${projectDir}/src/main/cpp"
+
 android {
     namespace = "com.gandis.kamera"
     compileSdk = 34
@@ -15,6 +20,24 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters += "arm64-v8a"
+            abiFilters += "armeabi-v7a"
+            //    abiFilters += 'x86_64'
+            //    abiFilters += 'x86'
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments(
+                    "-DCMAKE_TOOLCHAIN_FILE=${vcpkgRoot}/scripts/buildsystems/vcpkg.cmake",
+                    "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${androidSDKRootDir}/ndk/${androidNDKVersion}/build/cmake/android.toolchain.cmake",
+                    "-DVCPKG_INSTALLED_DIR=${sourceDir}/externals",
+                    "-DANDROID_ARM_NEON=ON",
+                    "-DANDROID_STL=c++_shared",
+                )
+            }
+        }
     }
 
     buildTypes {

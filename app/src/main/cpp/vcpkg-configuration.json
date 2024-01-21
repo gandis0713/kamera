@@ -1,0 +1,17 @@
+{
+  "default-registry": {
+    "kind": "git",
+    "repository": "https://github.com/Microsoft/vcpkg",
+    "baseline": "53bef8994c541b6561884a8395ea35715ece75db"
+  },
+  "registries": [
+    {
+      "kind": "git",
+      "repository": "https://github.com/gandis0713/vcpkg-registry",
+      "baseline": "9658656c6a117788b74b7390f739450c3f43f34e",
+      "packages": [
+        "jipu"
+      ]
+    }
+  ]
+}

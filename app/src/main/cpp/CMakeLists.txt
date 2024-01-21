@@ -5,11 +5,29 @@
 # Sets the minimum CMake version required for this project.
 cmake_minimum_required(VERSION 3.22.1)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    if(CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg.cmake")
+        if(ANDROID_ABI MATCHES "arm64-v8a")
+            set(VCPKG_TARGET_TRIPLET "arm64-android")
+        elseif(ANDROID_ABI MATCHES "armeabi-v7a")
+            set(VCPKG_TARGET_TRIPLET "arm-neon-android")
+        elseif(ANDROID_ABI MATCHES "x86_64")
+            set(VCPKG_TARGET_TRIPLET "x64-android")
+        elseif(ANDROID_ABI MATCHES "x86")
+            set(VCPKG_TARGET_TRIPLET "x86-android")
+        endif()
+    endif()
+endif()
+
 # Declares the project name. The project name can be accessed via ${ PROJECT_NAME},
 # Since this is the top level CMakeLists.txt, the project name is also accessible
 # with ${CMAKE_PROJECT_NAME} (both CMake variables are in-sync within the top level
 # build script scope).
 project("kamera")
+
+find_package(spdlog REQUIRED)
+#find_package(jipu REQUIRED)
+#find_package(Vulkan REQUIRED)
 
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
@@ -34,4 +52,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
 target_link_libraries(${CMAKE_PROJECT_NAME}
         # List libraries link to the target library
         android
-        log)
+        log
+        spdlog::spdlog_header_only
+#        jipu::jipu
+        )

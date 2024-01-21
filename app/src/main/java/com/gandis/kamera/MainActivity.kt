@@ -4,17 +4,22 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
+import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.os.Bundle
 import android.view.Surface
 import android.view.TextureView
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 
 class MainActivity : AppCompatActivity() {
     private lateinit var textureView: TextureView
+    private lateinit var switchCameraButton: Button
+    private var isFrontCamera: Boolean = true
     private lateinit var cameraManager: CameraManager
     private var cameraDevice: CameraDevice? = null
     private val _cameraRequestCode = 101
@@ -24,12 +29,19 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         textureView = findViewById(R.id.textureView)
+        switchCameraButton = findViewById(R.id.buttonSwitchCamera)
+
+        switchCameraButton.setOnClickListener {
+            isFrontCamera = !isFrontCamera
+            switchCamera()
+        }
+
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
         textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
                 if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                    openCamera()
+                    openCamera(isFrontCamera)
                 } else {
                     ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.CAMERA), _cameraRequestCode)
                 }
@@ -41,9 +53,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun openCamera() {
+    private fun getCameraId(isFront: Boolean): String? {
+        cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+
         try {
-            val cameraId = cameraManager.cameraIdList[0]
+            for (cameraId in cameraManager.cameraIdList) {
+                val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+                val cameraDirection = characteristics.get(CameraCharacteristics.LENS_FACING)
+
+                if (isFront && cameraDirection == CameraCharacteristics.LENS_FACING_FRONT) {
+                    return cameraId
+                } else if (!isFront && cameraDirection == CameraCharacteristics.LENS_FACING_BACK) {
+                    return cameraId
+                }
+            }
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
+        }
+        return null
+    }
+
+    private fun switchCamera() {
+        cameraDevice?.close()
+        openCamera(isFrontCamera)
+    }
+
+    private fun openCamera(isFront: Boolean) {
+        try {
+            val cameraId = getCameraId(isFront) ?: return
 
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
 
@@ -98,7 +135,7 @@ class MainActivity : AppCompatActivity() {
         when (requestCode) {
             _cameraRequestCode -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    openCamera()
+                    openCamera(isFrontCamera)
                 } else {
                     // 권한 거부 처리
                 }

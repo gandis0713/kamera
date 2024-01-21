@@ -113,6 +113,8 @@ class MainActivity : AppCompatActivity() {
             it.setDefaultBufferSize(1920, 1080)
             val surface = Surface(it)
 
+            createVulkanSwapchain(surface)
+
             val previewRequestBuilder = cameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             previewRequestBuilder?.addTarget(surface)
 
@@ -127,8 +129,6 @@ class MainActivity : AppCompatActivity() {
             }, null)
         }
     }
-
-
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -155,6 +155,8 @@ class MainActivity : AppCompatActivity() {
      * which is packaged with this application.
      */
     external fun stringFromJNI(): String
+
+    external fun createVulkanSwapchain(surface: Surface)
 
     companion object {
         // Used to load the 'kamera' library on application startup.

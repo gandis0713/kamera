@@ -1,23 +1,117 @@
 package com.gandis.kamera
 
-import androidx.appcompat.app.AppCompatActivity
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraDevice
+import android.hardware.camera2.CameraManager
 import android.os.Bundle
-import android.widget.TextView
-import com.gandis.kamera.databinding.ActivityMainBinding
+import android.view.Surface
+import android.view.TextureView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 
 class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var textureView: TextureView
+    private lateinit var cameraManager: CameraManager
+    private var cameraDevice: CameraDevice? = null
+    private val _cameraRequestCode = 101
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        textureView = findViewById(R.id.textureView)
+        cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
-        // Example of a call to a native method
-        binding.sampleText.text = stringFromJNI()
+        textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    openCamera()
+                } else {
+                    ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.CAMERA), _cameraRequestCode)
+                }
+            }
+
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean = true
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+        }
     }
+
+    private fun openCamera() {
+        try {
+            val cameraId = cameraManager.cameraIdList[0]
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+
+                // show dialog to notify need camera permission.
+                return
+            }
+
+            cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
+                override fun onOpened(camera: CameraDevice) {
+                    cameraDevice = camera
+                    startPreview()
+                }
+
+                override fun onDisconnected(camera: CameraDevice) {
+                    camera.close()
+                }
+
+                override fun onError(camera: CameraDevice, error: Int) {
+                    camera.close()
+                }
+            }, null)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun startPreview() {
+        val surfaceTexture = textureView.surfaceTexture
+        surfaceTexture?.let {
+            it.setDefaultBufferSize(1920, 1080)
+            val surface = Surface(it)
+
+            val previewRequestBuilder = cameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            previewRequestBuilder?.addTarget(surface)
+
+            cameraDevice?.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    previewRequestBuilder?.let { builder ->
+                        session.setRepeatingRequest(builder.build(), null, null)
+                    }
+                }
+
+                override fun onConfigureFailed(session: CameraCaptureSession) {}
+            }, null)
+        }
+    }
+
+
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            _cameraRequestCode -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    openCamera()
+                } else {
+                    // 권한 거부 처리
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraDevice?.close()
+    }
+
+
 
     /**
      * A native method that is implemented by the 'kamera' native library,
